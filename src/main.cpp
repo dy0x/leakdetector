@@ -47,7 +47,7 @@ void measureFlow(float* flowRate, unsigned long* totalMilliLitres);
 bool checkFlowRate();
 void addFlow(float newRate, bool* leakCheck);
 void displayLCD(float flowRate, unsigned long milliLitres);
-void thingspeakSend(float flowRate);
+void thingspeakSend(float flowRate, bool leakCheck);
 
 // Interrupts
 void IRAM_ATTR pulseCounter() { pulseCount++; }
@@ -124,15 +124,15 @@ void addFlow(float newRate, bool* leakCheck) {
   }
   flowRates.push_back(newRate);
 
-  Serial.print("Last 10 Measurements: ");
+  Serial.printf("Last %zu Measurements: ", maxEntries);
   for (float rate : flowRates) {
     Serial.print(rate);
     Serial.print(", ");
   }
   Serial.println();
 
-  bool leakCheck = checkFlowRate();
-  if (leakCheck) {
+  *leakCheck = checkFlowRate();
+  if (*leakCheck) {
     Serial.println("Shutting Solenoid !!! LEAK DETECTED !!");
   }
 }
