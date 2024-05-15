@@ -17,7 +17,6 @@ const int buttonPin = 5;
 const int solenoidPin = 13;
 const int LCD_RS = 22, LCD_EN = 23, LCD_D4 = 32, LCD_D5 = 33, LCD_D6 = 25,
 LCD_D7 = 26;
-
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 // Define
