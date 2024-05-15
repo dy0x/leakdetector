@@ -30,7 +30,7 @@ volatile bool buttonPressed = false;
 volatile byte pulseCount = 0;
 
 unsigned int sendCounter = 0;
-const int sendThreshold = 30;
+const int sendThreshold = 5;
 
 bool leakCheck;
 unsigned int shutoffThreshold = 5;
@@ -69,8 +69,7 @@ void setup() {
   ThingSpeak.begin(client);
 
   pinMode(solenoidPin, OUTPUT);
-  digitalWrite(solenoidPin,
-    HIGH);  // turn the LOAD off (HIGH is the voltage level)
+  digitalWrite(solenoidPin, LOW);  // turn the LOAD off (HIGH is the voltage level)
   pinMode(buttonPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonPress, FALLING);
   Serial.println("Solenoid Opened");
@@ -87,7 +86,7 @@ void loop() {
   addFlow(flowRate, &leakCheck);
   thingspeakSend(flowRate, leakCheck);
   displayLCD(flowRate, totalMilliLitres);
-  delay(2000);
+  delay(2500);
 }
 
 void checkButton() {
@@ -97,8 +96,7 @@ void checkButton() {
     lcd.print("Restarting!");
     Serial.println("BUTTON PRESSED!\n Opening Solenoid :)");
     buttonPressed = false;
-    digitalWrite(solenoidPin,
-      HIGH);  // turn the LOAD off (HIGH is the voltage level)
+    digitalWrite(solenoidPin, LOW);  // turn the LOAD off (HIGH is the voltage level)
     flowRates.clear(); // clear the flowRate vector when the button is pressed.
   }
 }
@@ -133,6 +131,8 @@ void addFlow(float newRate, bool* leakCheck) {
 
   *leakCheck = checkFlowRate();
   if (*leakCheck) {
+    digitalWrite(solenoidPin, HIGH);  // turn the LOAD off (HIGH is the voltage level)
+
     Serial.println("Shutting Solenoid !!! LEAK DETECTED !!");
   }
 }
@@ -140,9 +140,10 @@ void addFlow(float newRate, bool* leakCheck) {
 bool checkFlowRate() {
   int count = 0;
   for (float rate : flowRates) {
-    if (rate > shutoffMin || rate < shutoffMax) {
+    if (rate < shutoffMin || rate > shutoffMax) {
       count++;
     }
+
     if (count >= shutoffThreshold) {
       return true;
     }
@@ -151,7 +152,7 @@ bool checkFlowRate() {
 }
 
 void thingspeakSend(float flowRate, bool leakCheck) {
-  if (sendCounter == sendThreshold && leakCheck == false) {
+  if (sendCounter == sendThreshold) {
     ThingSpeak.writeField(TS_CHANNEL, 1, flowRate, TS_API);
     sendCounter = 0;
     Serial.println("Sending Data to ThingSpeak");
