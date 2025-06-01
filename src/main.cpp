@@ -3,39 +3,40 @@
 #include <ThingSpeak.h>
 #include <WiFi.h>
 #include <vector>
+#include "secrets.h"
 
 // WiFi
-const char* WIFI_NAME = "TelstraDC683D";
-const char* WIFI_PASSWORD = "9d116fd30d";
-const char* TS_API = "N2II9CLQL3490VSK";
-const unsigned long TS_CHANNEL = 2305005;
+const char* WIFI_NAME = SECRET_SSID;
+const char* WIFI_PASSWORD = SECRET_PASS;
+const char* TS_API = SECRET_API_KEY;
+const unsigned long TS_CHANNEL = SECRET_CHANNEL;
 WiFiClient client;
 
 // Pins
-const int sensorPin = 27;
-const int buttonPin = 5;
-const int solenoidPin = 13;
-const int LCD_RS = 22, LCD_EN = 23, LCD_D4 = 32, LCD_D5 = 33, LCD_D6 = 25,
+constexpr int sensorPin = 27;
+constexpr int buttonPin = 5;
+constexpr int solenoidPin = 13;
+constexpr int LCD_RS = 22, LCD_EN = 23, LCD_D4 = 32, LCD_D5 = 33, LCD_D6 = 25,
 LCD_D7 = 26;
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 
 // Define
 float flowRate = 0;
 std::vector<float> flowRates;
-const size_t maxEntries = 10;
-const float calibrationFactor = 4.5;
-const unsigned int debounceInterval = 1000;
+constexpr size_t maxEntries = 10;
+constexpr float calibrationFactor = 4.5;
+constexpr unsigned int debounceInterval = 1000;
 
 volatile bool buttonPressed = false;
 volatile byte pulseCount = 0;
 
 unsigned int sendCounter = 0;
-const int sendThreshold = 5;
+constexpr int sendThreshold = 5;
 
 bool leakCheck;
-unsigned int shutoffThreshold = 5;
-unsigned int shutoffMin = 2;
-unsigned int shutoffMax = 50;
+constexpr unsigned int shutoffThreshold = 5;
+constexpr unsigned int shutoffMin = 5;
+constexpr unsigned int shutoffMax = 40;
 
 unsigned long previousMillis = 0;
 unsigned long totalMilliLitres = 0;
@@ -43,9 +44,9 @@ byte pulse1Sec = 0;
 
 // Functions
 void checkButton();
-void measureFlow(float* flowRate, unsigned long* totalMilliLitres);
+void measureFlow(float& flowRate, unsigned long& totalMilliLitres);
 bool checkFlowRate();
-void addFlow(float newRate, bool* leakCheck);
+void addFlow(float newRate, bool& leakCheck);
 void displayLCD(float flowRate, unsigned long milliLitres);
 void thingspeakSend(float flowRate, bool leakCheck);
 
@@ -82,8 +83,8 @@ void setup() {
 
 void loop() {
   checkButton();
-  measureFlow(&flowRate, &totalMilliLitres);
-  addFlow(flowRate, &leakCheck);
+  measureFlow(flowRate, totalMilliLitres);
+  addFlow(flowRate, leakCheck);
   thingspeakSend(flowRate, leakCheck);
   displayLCD(flowRate, totalMilliLitres);
   delay(2500);
@@ -101,14 +102,14 @@ void checkButton() {
   }
 }
 
-void measureFlow(float* flowRate, unsigned long* totalMilliLitres) {
+void measureFlow(float& currentFlowRate, unsigned long& currentTotalMilliLitres) {
   unsigned long currentMillis = millis();
 
   if (currentMillis - previousMillis > debounceInterval) {
-    *flowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) /
+    currentFlowRate = ((1000.0 / (millis() - previousMillis)) * pulse1Sec) /
       calibrationFactor;
-    unsigned int flowMilliLitres = (*flowRate / 60) * 1000;
-    *totalMilliLitres += flowMilliLitres;
+    unsigned int flowMilliLitres = (currentFlowRate / 60) * 1000;
+    currentTotalMilliLitres += flowMilliLitres;
     pulse1Sec = pulseCount;
     pulseCount = 0;
     // previousMillis = millis();
@@ -116,7 +117,7 @@ void measureFlow(float* flowRate, unsigned long* totalMilliLitres) {
   }
 }
 
-void addFlow(float newRate, bool* leakCheck) {
+void addFlow(float newRate, bool& currentLeakCheck) {
   if (flowRates.size() >= maxEntries) {
     flowRates.erase(flowRates.begin()); // Remove oldest element
   }
@@ -129,8 +130,8 @@ void addFlow(float newRate, bool* leakCheck) {
   }
   Serial.println();
 
-  *leakCheck = checkFlowRate();
-  if (*leakCheck) {
+  currentLeakCheck = checkFlowRate();
+  if (currentLeakCheck) {
     digitalWrite(solenoidPin, HIGH);  // turn the LOAD off (HIGH is the voltage level)
 
     Serial.println("Shutting Solenoid !!! LEAK DETECTED !!");
